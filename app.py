@@ -35,7 +35,7 @@ def encode_text_into_plane(image, text, output_path, plane="RGB"):
     """
     img = image.convert("RGBA")  # Ensure image has alpha channel
     width, height = img.size
-    binary_text = ''.join(format(ord(char), '08b') for char in text) + '00000000'  # Add terminator
+    binary_text = ''.join(format(ord(char), '08b') for char in text) + '00000000'  # Add terminator and pad with zeros
     pixel_capacity = width * height  # Capacity per plane
 
     if len(binary_text) > pixel_capacity:
@@ -58,7 +58,9 @@ def encode_text_into_plane(image, text, output_path, plane="RGB"):
                     a = (a & 0xFE) | int(binary_text[(index + 3) % len(binary_text)])  # LSB of alpha
 
                 img.putpixel((x, y), (r, g, b, a))
-                index += 1 if 'A' in plane else 3  # Increment accordingly
+                bits_per_pixel = sum(p in plane for p in 'RGBA')  # Count the number of bits used per pixel
+                index += bits_per_pixel  # Increment accordingly
+                # index += 1 if 'A' in plane else 3  # Increment accordingly
 
     img.save(output_path, format="PNG")
 
@@ -66,6 +68,9 @@ def encode_zlib_into_image(image, file_data, output_path, plane="RGB"):
     """
     Embed zlib-compressed binary data into a specific color plane (R, G, B, A).
     """
+    if plane not in ["RGB", "RGBA"]:
+        raise ValueError("Invalid plane. Must be 'RGB' or 'RGBA'.") 
+    
     compressed_data = zlib.compress(file_data)
     binary_data = ''.join(format(byte, '08b') for byte in compressed_data) + '00000000'  # Add terminator
     width, height = image.size
